@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Harga Kamar Hotel</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 1em; }
+  #loadingIndicator { display: none; }
+  .room-card { border: 1px solid #ccc; padding: 1em; margin-bottom: 1em; border-radius: 5px; }
+  .room-image { max-width: 150px; display: block; margin-bottom: 0.5em; }
+  .error { color: red; }
+</style>
+</head>
+<body>
+
+<h2>Harga Kamar Hotel</h2>
+
+<label for="dateInput">Tanggal (dd/MM/yyyy): </label>
+<input type="text" id="dateInput" placeholder="e.g. 25/05/2025" />
+<button id="loadBtn">Tampilkan Harga</button>
+
+<p id="loadingIndicator">Memuat data...</p>
+<div id="roomList"></div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbzyCA_89iCGNLQRQXTb40bCr_b0FsySq9AWtKgk2iIMMBoBR9Pg3-LHbqqcw5mpz3ZnjA/exec';
+
+function displayRoomList(data, requestedDate) {
+  const container = document.getElementById('roomList');
+  container.innerHTML = '';
+
+  if (!data || data.error) {
+    container.innerHTML = `<p class="error">${data.error || 'Data tidak ditemukan.'}</p>`;
+    return;
+  }
+
+  const dateTitle = document.createElement('h3');
+  dateTitle.textContent = `Harga untuk tanggal: ${requestedDate}`;
+  container.appendChild(dateTitle);
+
+  for (const key in data.prices) {
+    const room = data.prices[key];
+
+    const card = document.createElement('div');
+    card.className = 'room-card';
+
+    if (room.image) {
+      const img = document.createElement('img');
+      img.src = room.image;
+      img.alt = room.label;
+      img.className = 'room-image';
+      card.appendChild(img);
+    }
+
+    const label = document.createElement('h4');
+    label.textContent = room.label;
+    card.appendChild(label);
+
+    const priceTunai = document.createElement('p');
+    priceTunai.textContent = `Harga Tunai: ${room.tunai}`;
+    card.appendChild(priceTunai);
+
+    const priceQris = document.createElement('p');
+    priceQris.textContent = `Harga QRIS: ${room.qris}`;
+    card.appendChild(priceQris);
+
+    const note = document.createElement('p');
+    note.textContent = `Catatan: ${room.note}`;
+    card.appendChild(note);
+
+    container.appendChild(card);
+  }
+}
+
+function loadRoomPrices(date) {
+  const loading = document.getElementById('loadingIndicator');
+  const container = document.getElementById('roomList');
+
+  loading.style.display = 'block';
+  container.innerHTML = '';
+
+  // Hapus script JSONP lama jika ada
+  const oldScript = document.getElementById('jsonpScript');
+  if (oldScript) oldScript.remove();
+
+  window.jsonpCallback = function(data) {
+    displayRoomList(data, date);
+    loading.style.display = 'none';
+  };
+
+  const script = document.createElement('script');
+  script.id = 'jsonpScript';
+  script.src = `${API_URL}?date=${encodeURIComponent(date)}&callback=jsonpCallback`;
+  script.onerror = function() {
+    container.innerText = 'Gagal memuat data.';
+    loading.style.display = 'none';
+  };
+
+  document.body.appendChild(script);
+}
+
+document.getElementById('loadBtn').addEventListener('click', () => {
+  const dateInput = document.getElementById('dateInput').value.trim();
+  const datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
+  if (!datePattern.test(dateInput)) {
+    alert('Format tanggal harus dd/MM/yyyy');
+    return;
+  }
+  loadRoomPrices(dateInput);
+});
+</script>
+
+</body>
+</html>
