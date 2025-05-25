@@ -1,308 +1,115 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <base target="_top">
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body {
-      font-family: 'Open Sans', sans-serif;
-      padding: 10px;
-      margin: 0;
-      background-color: #f9f9f9;
-    }
-    h3 {
-      text-align: center;
-      font-size: 28px;
-      margin: 0;
-      padding: 10px 0;
-      text-transform: uppercase;
-      font-family: Helvetica, sans-serif;
-    }
-    .sticky-header {
-      position: sticky;
-      top: 0;
-      z-index: 999;
-      background: #f9f9f9;
-      padding-bottom: 6px;
-      transition: box-shadow 0.3s ease;
-    }
-    .sticky-header.scrolled {
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    }
-    .tabs {
-      display: flex;
-      overflow-x: auto;
-      margin-bottom: 2px;
-    }
-    .tab {
-      flex: 1;
-      text-align: center;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      background: #fff;
-      cursor: pointer;
-      white-space: nowrap;
-      margin-right: 18px;
-      font-size: 28px;
-      user-select: none;
-    }
-    .tab.active {
-      background: #007bff;
-      color: #fff;
-      font-weight: bold;
-    }
-    #selectedDateLabel {
-      text-align: center;
-      font-size: 32px;
-      color: #007bff;
-      font-weight: bold;
-      margin-bottom: 2px;
-    }
-    .room-list {
-      padding: 10px;
-    }
-    .room-item {
-      border: 1px solid #007bff;
-      border-radius: 6px;
-      margin: 16px 0;
-      padding: 10px;
-      background-color: #fff;
-      cursor: pointer;
-      position: relative;
-      font-size: 30px;
-      text-align: center;
-      text-transform: uppercase;
-      font-family: Helvetica, sans-serif;
-      user-select: none;
-    }
-    .room-item:hover {
-      background-color: #e6f0ff;
-    }
-    .price {
-      font-size: 28px;
-      margin-top: 4px;
-    }
-    .room-detail {
-      margin-top: 8px;
-      padding-top: 10px;
-      border-top: 1px dashed #007bff;
-      transition: all 0.2s ease-in-out;
-    }
-    .room-detail img {
-      width: 100%;
-      max-width: 400px;
-      display: block;
-      margin: 10px auto;
-      border-radius: 8px;
-    }
-    .note {
-      color: #555;
-      font-size: 16px;
-      margin-top: 5px;
-      text-align: center;
-    }
-    #loadingIndicator {
-      text-align: center;
-      font-size: 14px;
-      color: #ff0000;
-      display: none;
-      margin-top: 6px;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Harga Kamar Hotel</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 1em; }
+  #loadingIndicator { display: none; }
+  .room-card { border: 1px solid #ccc; padding: 1em; margin-bottom: 1em; border-radius: 5px; }
+  .room-image { max-width: 150px; display: block; margin-bottom: 0.5em; }
+  .error { color: red; }
+</style>
 </head>
 <body>
-  <div class="sticky-header" id="stickyHeader">
-    <div id="currentDateTime" style="text-align: center; font-size: 16px; margin-top: 5px;"></div>
-    <h3>HARGA KAMAR</h3>
-    <div id="tabs" class="tabs"></div>
-    <div id="selectedDateLabel"></div>
-    <div id="loadingIndicator">HARGA SEDANG DIPERBAHARUI...</div>
-  </div>
 
-  <div class="room-list" id="roomList"></div>
+<h2>Harga Kamar Hotel</h2>
 
-  <script>
-    // Ganti URL ini dengan URL Web Apps kamu yang sudah dideploy (WAJIB pakai /exec di akhir)
-    const API_URL = "https://script.google.com/macros/s/AKfycbzyCA_89iCGNLQRQXTb40bCr_b0FsySq9AWtKgk2iIMMBoBR9Pg3-LHbqqcw5mpz3ZnjA/exec";
+<label for="dateInput">Tanggal (dd/MM/yyyy): </label>
+<input type="text" id="dateInput" placeholder="e.g. 25/05/2025" />
+<button id="loadBtn">Tampilkan Harga</button>
 
-    const formatDate = (d) => {
-      const dd = String(d.getDate()).padStart(2, '0');
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const yyyy = d.getFullYear();
-      return `${dd}/${mm}/${yyyy}`;
-    };
+<p id="loadingIndicator">Memuat data...</p>
+<div id="roomList"></div>
 
-    const formatDateTime = (d) => {
-      const dd = String(d.getDate()).padStart(2, '0');
-      const mm = d.getMonth();
-      const yyyy = d.getFullYear();
-      const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-      const hours = String(d.getHours()).padStart(2, '0');
-      const minutes = String(d.getMinutes()).padStart(2, '0');
-      const seconds = String(d.getSeconds()).padStart(2, '0');
-      return `${dd} ${months[mm]} ${yyyy} , ${hours}:${minutes}:${seconds}`;
-    };
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbzyCA_89iCGNLQRQXTb40bCr_b0FsySq9AWtKgk2iIMMBoBR9Pg3-LHbqqcw5mpz3ZnjA/exec';
 
-    const displayCurrentDateTime = () => {
-      const now = new Date();
-      const dateTimeString = formatDateTime(now);
-      document.getElementById('currentDateTime').innerText = "Data ditampilkan pada: " + dateTimeString;
-    };
+function displayRoomList(data, requestedDate) {
+  const container = document.getElementById('roomList');
+  container.innerHTML = '';
 
-    const createTabs = () => {
-      const tabsDiv = document.getElementById('tabs');
-      tabsDiv.innerHTML = '';
-      const today = new Date();
+  if (!data || data.error) {
+    container.innerHTML = `<p class="error">${data.error || 'Data tidak ditemukan.'}</p>`;
+    return;
+  }
 
-      // Membuat tab dari kemarin sampai 2 hari ke depan (4 hari total)
-      for (let i = -1; i <= 2; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        const label = formatDate(d);
-        const tab = document.createElement('div');
-        tab.className = 'tab';
-        if (i === 0) tab.classList.add('active');
-        tab.innerText = label;
-        tab.onclick = () => {
-          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-          tab.classList.add('active');
-          document.getElementById('selectedDateLabel').innerText = "TANGGAL DIPILIH: " + label;
-          loadRoomPrices(label);
-        };
-        tabsDiv.appendChild(tab);
-      }
+  const dateTitle = document.createElement('h3');
+  dateTitle.textContent = `Harga untuk tanggal: ${requestedDate}`;
+  container.appendChild(dateTitle);
 
-      // Default load hari ini
-      const defaultLabel = formatDate(today);
-      document.getElementById('selectedDateLabel').innerText = "TANGGAL DIPILIH: " + defaultLabel;
-      loadRoomPrices(defaultLabel);
-    };
+  for (const key in data.prices) {
+    const room = data.prices[key];
 
-    const loadRoomPrices = (date) => {
-      const loading = document.getElementById('loadingIndicator');
-      const container = document.getElementById('roomList');
+    const card = document.createElement('div');
+    card.className = 'room-card';
 
-      loading.style.display = 'block';
-      container.innerHTML = '';
-      displayCurrentDateTime();
+    if (room.image) {
+      const img = document.createElement('img');
+      img.src = room.image;
+      img.alt = room.label;
+      img.className = 'room-image';
+      card.appendChild(img);
+    }
 
-      fetch(`${API_URL}?date=${encodeURIComponent(date)}`)
-        .then(response => {
-          if (!response.ok) throw new Error('Network response was not ok: ' + response.status);
-          return response.json();
-        })
-        .then(data => {
-          console.log('Response data:', data);
-          displayRoomList(data);
-          loading.style.display = 'none';
-        })
-        .catch(err => {
-          console.error('Fetch error:', err);
-          container.innerText = 'Gagal memuat data: ' + err.message;
-          loading.style.display = 'none';
-        });
-    };
+    const label = document.createElement('h4');
+    label.textContent = room.label;
+    card.appendChild(label);
 
-    const displayRoomList = (data) => {
-      const container = document.getElementById('roomList');
-      container.innerHTML = '';
+    const priceTunai = document.createElement('p');
+    priceTunai.textContent = `Harga Tunai: ${room.tunai}`;
+    card.appendChild(priceTunai);
 
-      if (!data) {
-        container.innerText = 'Tidak ada data diterima.';
-        return;
-      }
+    const priceQris = document.createElement('p');
+    priceQris.textContent = `Harga QRIS: ${room.qris}`;
+    card.appendChild(priceQris);
 
-      if (data.error) {
-        container.innerText = data.error;
-        return;
-      }
+    const note = document.createElement('p');
+    note.textContent = `Catatan: ${room.note}`;
+    card.appendChild(note);
 
-      if (!data.prices) {
-        container.innerText = 'Data harga tidak tersedia.';
-        return;
-      }
+    container.appendChild(card);
+  }
+}
 
-      const prices = data.prices;
+function loadRoomPrices(date) {
+  const loading = document.getElementById('loadingIndicator');
+  const container = document.getElementById('roomList');
 
-      const desiredOrder = [
-        'singleRoom',
-        'standardRoom',
-        'deluxeRoom',
-        'suiteRoom',
-        'familyRoom',
-        'singleB10',
-        'standardTanpaAC'
-      ];
+  loading.style.display = 'block';
+  container.innerHTML = '';
 
-      desiredOrder.forEach((type) => {
-        const room = prices[type];
-        if (!room) return;
+  // Hapus script JSONP lama jika ada
+  const oldScript = document.getElementById('jsonpScript');
+  if (oldScript) oldScript.remove();
 
-        const div = document.createElement('div');
-        div.className = 'room-item';
-        div.innerHTML = `
-          <strong>${room.label}</strong>
-          <div class="price">TUNAI : Rp. ${room.tunai || '-'}</div>
-          <div class="price">QRIS  : Rp. ${room.qris || '-'}</div>
-        `;
+  window.jsonpCallback = function(data) {
+    displayRoomList(data, date);
+    loading.style.display = 'none';
+  };
 
-        const detailDiv = document.createElement('div');
-        detailDiv.className = 'room-detail';
-        detailDiv.style.display = 'none';
+  const script = document.createElement('script');
+  script.id = 'jsonpScript';
+  script.src = `${API_URL}?date=${encodeURIComponent(date)}&callback=jsonpCallback`;
+  script.onerror = function() {
+    container.innerText = 'Gagal memuat data.';
+    loading.style.display = 'none';
+  };
 
-        div.appendChild(detailDiv);
+  document.body.appendChild(script);
+}
 
-        div.addEventListener('click', (e) => {
-          e.stopPropagation();
-          // Tutup semua detail lain kecuali ini
-          document.querySelectorAll('.room-detail').forEach(d => { if (d !== detailDiv) d.style.display = 'none'; });
+document.getElementById('loadBtn').addEventListener('click', () => {
+  const dateInput = document.getElementById('dateInput').value.trim();
+  const datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
+  if (!datePattern.test(dateInput)) {
+    alert('Format tanggal harus dd/MM/yyyy');
+    return;
+  }
+  loadRoomPrices(dateInput);
+});
+</script>
 
-          if (detailDiv.style.display === 'block') {
-            detailDiv.style.display = 'none';
-          } else {
-            detailDiv.innerHTML = `
-              <div class="note">${room.note || 'Note : -'}</div>
-              <div class="note">Harga berlaku untuk 10 menit sejak ditampilkan</div>
-              <div class="note"><b>SILAHKAN SCAN MENGGUNAKAN APLIKASI PEMBAYARAN</b></div>
-              <div class="note">PERIKSA KEMBALI TANGGAL, TIPE KAMAR & NOMINAL SEBELUM BAYAR</div>
-              ${room.image ? `<img src="${room.image}" alt="QRIS ${room.label}">` : ''}
-            `;
-            detailDiv.style.display = 'block';
-          }
-        });
-
-        container.appendChild(div);
-      });
-    };
-
-    // Klik di luar untuk tutup semua detail
-    document.body.addEventListener('click', () => {
-      document.querySelectorAll('.room-detail').forEach(d => d.style.display = 'none');
-    });
-
-    // Sticky header shadow effect saat scroll
-    window.addEventListener('scroll', () => {
-      const sticky = document.getElementById('stickyHeader');
-      if (window.scrollY > 0) {
-        sticky.classList.add('scrolled');
-      } else {
-        sticky.classList.remove('scrolled');
-      }
-    });
-
-    window.onload = () => {
-      displayCurrentDateTime();
-      createTabs();
-
-      // Auto-refresh setiap 2 menit (120000 ms)
-      setInterval(() => {
-        const activeTab = document.querySelector('.tab.active');
-        if (activeTab) {
-          loadRoomPrices(activeTab.innerText);
-        }
-      }, 120000);
-    };
-  </script>
 </body>
 </html>
