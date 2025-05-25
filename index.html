@@ -150,6 +150,7 @@
 
     const createTabs = () => {
       const tabsDiv = document.getElementById('tabs');
+      tabsDiv.innerHTML = '';
       const today = new Date();
 
       for (let i = -1; i <= 2; i++) {
@@ -176,21 +177,25 @@
 
     const loadRoomPrices = (date) => {
       const loading = document.getElementById('loadingIndicator');
+      const container = document.getElementById('roomList');
+
       loading.style.display = 'block';
+      container.innerHTML = '';
       displayCurrentDateTime();
 
       fetch(`${API_URL}?date=${encodeURIComponent(date)}`)
         .then(response => {
-          if (!response.ok) throw new Error('Network response was not ok');
+          if (!response.ok) throw new Error('Network response was not ok: ' + response.status);
           return response.json();
         })
         .then(data => {
+          console.log('Response data:', data);
           displayRoomList(data, date);
           loading.style.display = 'none';
         })
         .catch(err => {
-          console.error(err);
-          document.getElementById('roomList').innerText = 'Gagal memuat data';
+          console.error('Fetch error:', err);
+          container.innerText = 'Gagal memuat data: ' + err.message;
           loading.style.display = 'none';
         });
     };
@@ -199,8 +204,18 @@
       const container = document.getElementById('roomList');
       container.innerHTML = '';
 
+      if (!data) {
+        container.innerText = 'Tidak ada data diterima.';
+        return;
+      }
+
       if (data.error) {
         container.innerText = data.error;
+        return;
+      }
+
+      if (!data.prices) {
+        container.innerText = 'Data harga tidak tersedia.';
         return;
       }
 
