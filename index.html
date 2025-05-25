@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body {
-      font-family: Open Sans, sans-serif;
+      font-family: 'Open Sans', sans-serif;
       padding: 10px;
       margin: 0;
       background-color: #f9f9f9;
@@ -45,6 +45,7 @@
       white-space: nowrap;
       margin-right: 18px;
       font-size: 28px;
+      user-select: none;
     }
     .tab.active {
       background: #007bff;
@@ -73,6 +74,7 @@
       text-align: center;
       text-transform: uppercase;
       font-family: Helvetica, sans-serif;
+      user-select: none;
     }
     .room-item:hover {
       background-color: #e6f0ff;
@@ -112,7 +114,6 @@
 <body>
   <div class="sticky-header" id="stickyHeader">
     <div id="currentDateTime" style="text-align: center; font-size: 16px; margin-top: 5px;"></div>
-
     <h3>HARGA KAMAR</h3>
     <div id="tabs" class="tabs"></div>
     <div id="selectedDateLabel"></div>
@@ -122,7 +123,8 @@
   <div class="room-list" id="roomList"></div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzjDJyLXQqiQKXMnM--jSlPrebcxQ_Jsd2cbWAFPCQ/dev";
+    // Ganti URL ini dengan URL Web Apps kamu yang sudah dideploy (WAJIB pakai /exec di akhir)
+    const API_URL = "https://script.google.com/macros/s/AKfycbzyCA_89iCGNLQRQXTb40bCr_b0FsySq9AWtKgk2iIMMBoBR9Pg3-LHbqqcw5mpz3ZnjA/exec";
 
     const formatDate = (d) => {
       const dd = String(d.getDate()).padStart(2, '0');
@@ -153,8 +155,9 @@
       tabsDiv.innerHTML = '';
       const today = new Date();
 
+      // Membuat tab dari kemarin sampai 2 hari ke depan (4 hari total)
       for (let i = -1; i <= 2; i++) {
-        const d = new Date();
+        const d = new Date(today);
         d.setDate(today.getDate() + i);
         const label = formatDate(d);
         const tab = document.createElement('div');
@@ -170,6 +173,7 @@
         tabsDiv.appendChild(tab);
       }
 
+      // Default load hari ini
       const defaultLabel = formatDate(today);
       document.getElementById('selectedDateLabel').innerText = "TANGGAL DIPILIH: " + defaultLabel;
       loadRoomPrices(defaultLabel);
@@ -190,7 +194,7 @@
         })
         .then(data => {
           console.log('Response data:', data);
-          displayRoomList(data, date);
+          displayRoomList(data);
           loading.style.display = 'none';
         })
         .catch(err => {
@@ -200,7 +204,7 @@
         });
     };
 
-    const displayRoomList = (data, date) => {
+    const displayRoomList = (data) => {
       const container = document.getElementById('roomList');
       container.innerHTML = '';
 
@@ -251,8 +255,8 @@
 
         div.addEventListener('click', (e) => {
           e.stopPropagation();
-          const allDetails = document.querySelectorAll('.room-detail');
-          allDetails.forEach(d => { if (d !== detailDiv) d.style.display = 'none'; });
+          // Tutup semua detail lain kecuali ini
+          document.querySelectorAll('.room-detail').forEach(d => { if (d !== detailDiv) d.style.display = 'none'; });
 
           if (detailDiv.style.display === 'block') {
             detailDiv.style.display = 'none';
@@ -272,10 +276,12 @@
       });
     };
 
+    // Klik di luar untuk tutup semua detail
     document.body.addEventListener('click', () => {
       document.querySelectorAll('.room-detail').forEach(d => d.style.display = 'none');
     });
 
+    // Sticky header shadow effect saat scroll
     window.addEventListener('scroll', () => {
       const sticky = document.getElementById('stickyHeader');
       if (window.scrollY > 0) {
@@ -289,12 +295,11 @@
       displayCurrentDateTime();
       createTabs();
 
-      // Auto-refresh setiap 2 menit
+      // Auto-refresh setiap 2 menit (120000 ms)
       setInterval(() => {
         const activeTab = document.querySelector('.tab.active');
         if (activeTab) {
-          const selectedDate = activeTab.innerText;
-          loadRoomPrices(selectedDate);
+          loadRoomPrices(activeTab.innerText);
         }
       }, 120000);
     };
