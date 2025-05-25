@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: Open Sans, sans-serif;
+      padding: 10px;
+      margin: 0;
+      background-color: #f9f9f9;
+    }
+    h3 {
+      text-align: center;
+      font-size: 28px;
+      margin: 0;
+      padding: 10px 0;
+      text-transform: uppercase;
+      font-family: Helvetica, sans-serif;
+    }
+    .sticky-header {
+      position: sticky;
+      top: 0;
+      z-index: 999;
+      background: #f9f9f9;
+      padding-bottom: 6px;
+      transition: box-shadow 0.3s ease;
+    }
+    .sticky-header.scrolled {
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+    .tabs {
+      display: flex;
+      overflow-x: auto;
+      margin-bottom: 2px;
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      margin-right: 18px;
+      font-size: 28px;
+    }
+    .tab.active {
+      background: #007bff;
+      color: #fff;
+      font-weight: bold;
+    }
+    #selectedDateLabel {
+      text-align: center;
+      font-size: 32px;
+      color: #007bff;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+    .room-list {
+      padding: 10px;
+    }
+    .room-item {
+      border: 1px solid #007bff;
+      border-radius: 6px;
+      margin: 16px 0;
+      padding: 10px;
+      background-color: #fff;
+      cursor: pointer;
+      position: relative;
+      font-size: 30px;
+      text-align: center;
+      text-transform: uppercase;
+      font-family: Helvetica, sans-serif;
+    }
+    .room-item:hover {
+      background-color: #e6f0ff;
+    }
+    .price {
+      font-size: 28px;
+      margin-top: 4px;
+    }
+    .room-detail {
+      margin-top: 8px;
+      padding-top: 10px;
+      border-top: 1px dashed #007bff;
+      transition: all 0.2s ease-in-out;
+    }
+    .room-detail img {
+      width: 100%;
+      max-width: 400px;
+      display: block;
+      margin: 10px auto;
+      border-radius: 8px;
+    }
+    .note {
+      color: #555;
+      font-size: 16px;
+      margin-top: 5px;
+      text-align: center;
+    }
+    #loadingIndicator {
+      text-align: center;
+      font-size: 14px;
+      color: #ff0000;
+      display: none;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="sticky-header" id="stickyHeader">
+    <div id="currentDateTime" style="text-align: center; font-size: 16px; margin-top: 5px;"></div>
+
+    <h3>HARGA KAMAR</h3>
+    <div id="tabs" class="tabs"></div>
+    <div id="selectedDateLabel"></div>
+    <div id="loadingIndicator">HARGA SEDANG DIPERBAHARUI...</div>
+  </div>
+
+  <div class="room-list" id="roomList"></div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzjDJyLXQqiQKXMnM--jSlPrebcxQ_Jsd2cbWAFPCQ/dev";
+
+    const formatDate = (d) => {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    };
+
+    const formatDateTime = (d) => {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = d.getMonth();
+      const yyyy = d.getFullYear();
+      const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      const seconds = String(d.getSeconds()).padStart(2, '0');
+      return `${dd} ${months[mm]} ${yyyy} , ${hours}:${minutes}:${seconds}`;
+    };
+
+    const displayCurrentDateTime = () => {
+      const now = new Date();
+      const dateTimeString = formatDateTime(now);
+      document.getElementById('currentDateTime').innerText = "Data ditampilkan pada: " + dateTimeString;
+    };
+
+    const createTabs = () => {
+      const tabsDiv = document.getElementById('tabs');
+      const today = new Date();
+
+      for (let i = -1; i <= 2; i++) {
+        const d = new Date();
+        d.setDate(today.getDate() + i);
+        const label = formatDate(d);
+        const tab = document.createElement('div');
+        tab.className = 'tab';
+        if (i === 0) tab.classList.add('active');
+        tab.innerText = label;
+        tab.onclick = () => {
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          document.getElementById('selectedDateLabel').innerText = "TANGGAL DIPILIH: " + label;
+          loadRoomPrices(label);
+        };
+        tabsDiv.appendChild(tab);
+      }
+
+      const defaultLabel = formatDate(today);
+      document.getElementById('selectedDateLabel').innerText = "TANGGAL DIPILIH: " + defaultLabel;
+      loadRoomPrices(defaultLabel);
+    };
+
+    const loadRoomPrices = (date) => {
+      const loading = document.getElementById('loadingIndicator');
+      loading.style.display = 'block';
+      displayCurrentDateTime();
+
+      fetch(`${API_URL}?date=${encodeURIComponent(date)}`)
+        .then(response => {
+          if (!response.ok) throw new Error('Network response was not ok');
+          return response.json();
+        })
+        .then(data => {
+          displayRoomList(data, date);
+          loading.style.display = 'none';
+        })
+        .catch(err => {
+          console.error(err);
+          document.getElementById('roomList').innerText = 'Gagal memuat data';
+          loading.style.display = 'none';
+        });
+    };
+
+    const displayRoomList = (data, date) => {
+      const container = document.getElementById('roomList');
+      container.innerHTML = '';
+
+      if (data.error) {
+        container.innerText = data.error;
+        return;
+      }
+
+      const prices = data.prices;
+
+      const desiredOrder = [
+        'singleRoom',
+        'standardRoom',
+        'deluxeRoom',
+        'suiteRoom',
+        'familyRoom',
+        'singleB10',
+        'standardTanpaAC'
+      ];
+
+      desiredOrder.forEach((type) => {
+        const room = prices[type];
+        if (!room) return;
+
+        const div = document.createElement('div');
+        div.className = 'room-item';
+        div.innerHTML = `
+          <strong>${room.label}</strong>
+          <div class="price">TUNAI : Rp. ${room.tunai || '-'}</div>
+          <div class="price">QRIS  : Rp. ${room.qris || '-'}</div>
+        `;
+
+        const detailDiv = document.createElement('div');
+        detailDiv.className = 'room-detail';
+        detailDiv.style.display = 'none';
+
+        div.appendChild(detailDiv);
+
+        div.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const allDetails = document.querySelectorAll('.room-detail');
+          allDetails.forEach(d => { if (d !== detailDiv) d.style.display = 'none'; });
+
+          if (detailDiv.style.display === 'block') {
+            detailDiv.style.display = 'none';
+          } else {
+            detailDiv.innerHTML = `
+              <div class="note">${room.note || 'Note : -'}</div>
+              <div class="note">Harga berlaku untuk 10 menit sejak ditampilkan</div>
+              <div class="note"><b>SILAHKAN SCAN MENGGUNAKAN APLIKASI PEMBAYARAN</b></div>
+              <div class="note">PERIKSA KEMBALI TANGGAL, TIPE KAMAR & NOMINAL SEBELUM BAYAR</div>
+              ${room.image ? `<img src="${room.image}" alt="QRIS ${room.label}">` : ''}
+            `;
+            detailDiv.style.display = 'block';
+          }
+        });
+
+        container.appendChild(div);
+      });
+    };
+
+    document.body.addEventListener('click', () => {
+      document.querySelectorAll('.room-detail').forEach(d => d.style.display = 'none');
+    });
+
+    window.addEventListener('scroll', () => {
+      const sticky = document.getElementById('stickyHeader');
+      if (window.scrollY > 0) {
+        sticky.classList.add('scrolled');
+      } else {
+        sticky.classList.remove('scrolled');
+      }
+    });
+
+    window.onload = () => {
+      displayCurrentDateTime();
+      createTabs();
+
+      // Auto-refresh setiap 2 menit
+      setInterval(() => {
+        const activeTab = document.querySelector('.tab.active');
+        if (activeTab) {
+          const selectedDate = activeTab.innerText;
+          loadRoomPrices(selectedDate);
+        }
+      }, 120000);
+    };
+  </script>
+</body>
+</html>
